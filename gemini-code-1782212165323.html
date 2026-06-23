@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тестирование сотрудников — Банк Эсхата</title>
+    <style>
+        :root {
+            --primary-color: #007A48;
+            --secondary-color: #f4f6f9;
+            --text-color: #333;
+            --white: #ffffff;
+            --correct-color: #e8f5e9;
+            --correct-border: #2e7d32;
+            --wrong-color: #ffebee;
+            --wrong-border: #c62828;
+            --selected-color: #e3f2fd;
+            --selected-border: #2196f3;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 90vh;
+        }
+
+        .container {
+            max-width: 650px;
+            width: 100%;
+            background: var(--white);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 1.8em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 1em;
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        .form-group { margin: 20px 0; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+        .form-group input {
+            width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 1em; box-sizing: border-box;
+        }
+
+        .progress-bar {
+            font-size: 0.9em; color: #555; margin-bottom: 15px; display: flex; justify-content: space-between; font-weight: bold;
+        }
+
+        .question-text { font-size: 1.2em; font-weight: 600; margin-bottom: 20px; line-height: 1.4; }
+        .options-list { list-style: none; padding: 0; margin: 0; }
+        .option-item { margin-bottom: 12px; }
+        .option-item button {
+            width: 100%; text-align: left; padding: 14px 18px; background: var(--white); border: 1px solid #ccc; border-radius: 8px; cursor: pointer; font-size: 1em; transition: all 0.2s ease;
+        }
+        .option-item button:hover:not([disabled]) { background: #f0f0f0; border-color: #999; }
+        
+        /* Стиль при предварительном выборе ответа */
+        .option-item button.selected {
+            background-color: var(--selected-color) !important;
+            border-color: var(--selected-border) !important;
+            color: #0d47a1;
+        }
+
+        .option-item button.correct { background-color: var(--correct-color) !important; border-color: var(--correct-border) !important; color: #1b5e20; font-weight: 600; }
+        .option-item button.wrong { background-color: var(--wrong-color) !important; border-color: var(--wrong-border) !important; color: #b71c1c; }
+
+        .btn-action {
+            display: block; width: 100%; padding: 14px; background: var(--primary-color); color: var(--white); border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 20px; text-align: center;
+        }
+        .btn-action:hover { background: #005f37; }
+        
+        /* Синяя кнопка подтверждения */
+        .btn-confirm {
+            background: #2196f3;
+        }
+        .btn-confirm:hover {
+            background: #0b7dda;
+        }
+
+        .results-box { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .result-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 1.1em; }
+        .result-row:last-child { border-bottom: none; }
+        
+        .val-good { color: var(--correct-border); font-weight: bold; }
+        .val-bad { color: var(--wrong-border); font-weight: bold; }
+        
+        #sending-status {
+            text-align: center; color: #666; font-style: italic; margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Тестирование сотрудников</h1>
+    <div class="subtitle">Управление клиентского сопровождения (УКС)</div>
+
+    <div id="screen-auth" class="screen active">
+        <div class="form-group">
+            <label for="username">Введите ваше Имя и Фамилию:</label>
+            <input type="text" id="username" placeholder="Введите своё имя" autocomplete="off">
+        </div>
+        <button class="btn-action" onclick="startQuiz()">Начать тестирование</button>
+    </div>
+
+    <div id="screen-quiz" class="screen">
+        <div class="progress-bar">
+            <span id="progress-text">Вопрос 1 из 30</span>
+            <span id="live-score">Верно: 0</span>
+        </div>
+        <div id="question-box">
+            <div class="question-text" id="q-text">Текст вопроса?</div>
+            <div class="options-list" id="q-options"></div>
+        </div>
+        <button class="btn-action btn-confirm" id="btn-confirm" style="display: none;" onclick="confirmAnswer()">Подтвердить ответ</button>
+        <button class="btn-action" id="btn-next" style="display: none;" onclick="nextQuestion()">Следующий вопрос</button>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <h2 style="text-align: center; color: var(--primary-color);">Тест завершен!</h2>
+        <div class="results-box">
+            <div class="result-row"><span>Сотрудник:</span><span id="res-name" style="font-weight: bold;">-</span></div>
+            <div class="result-row"><span>Правильных ответов:</span><span id="res-correct" class="val-good">0</span></div>
+            <div class="result-row"><span>Неправильных ответов:</span><span id="res-wrong" class="val-bad">0</span></div>
+            <div class="result-row" style="font-size: 1.3em; margin-top: 10px; padding-top: 15px; border-top: 2px dashed #ccc;">
+                <span>Результат:</span><span id="res-percent" style="font-weight: bold; color: #0d47a1;">0%</span>
+            </div>
+        </div>
+        <div id="sending-status">Сохранение результатов в таблицу...</div>
+        <button class="btn-action" id="btn-restart" style="display: none;" onclick="restartQuiz()">Пройти заново</button>
+    </div>
+</div>
+
+<script>
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzAOZrnF18KZHRxkaNZGnXak6MOFB0SHpWH2zdROC6SshsDedTFSPxHzCZa_U6cuHCr/exec";
+
+const allQuestions = [
+    { id: 1, q: "В какой валюте можно открыть срочный депозит?", answers: ["В сомони и USD", "Только в сомони", "Только в USD"], correct: "В сомони и USD" },
+    { id: 2, q: "Какая минимальная сумма вклада срочный депозит в сомони через офис Банка?", answers: ["1000 сомони", "500 сомони", "1500 сомони"], correct: "1000 сомони" },
+    { id: 3, q: "Какая минимальная сумма вклада срочный депозит в долларах США через офис Банка?", answers: ["100 USD", "500 USD", "200 USD"], correct: "100 USD" },
+    { id: 4, q: "На какой минимальный срок можно открыть срочный депозит?", answers: ["90 дней", "120 дней", "180 дней"], correct: "180 дней" },
+    { id: 5, q: "Какие условия действуют при досрочном снятии депозита Легализации денежных средств?", answers: ["5% от суммы перечисляется в государственный бюджет", "Проценты аннулируются", "Удерживается налог 12%"], correct: "5% от суммы перечисляется в государственный бюджет" },
+    { id: 6, q: "Какой крайний срок договора при открытии депозита Легализации денежных средств?", answers: ["31.12.2026", "04.01.2027", "01.01.2026"], correct: "04.01.2027" },
+    { id: 7, q: "Взимается ли налог при начислении процентов по депозиту Легализации денежных средств?", answers: ["Нет", "Да"], correct: "Нет" },
+    { id: 8, q: "С какой даты приостановлены переводы в долларах и евро через систему «Юнистрим»?", answers: ["30.09.2023", "01.01.2024", "01.09.2025"], correct: "01.09.2025" },
+    { id: 9, q: "Какие условия действуют для исходящих переводов через систему переводом NPSR?", answers: ["Переводы в страны СНГ, комиссия 1%, конвертация в рубли", "Переводы без ограничений по сумме и валюте", "Переводы только в долларах, комиссия 0%"], correct: "Переводы в страны СНГ, комиссия 1%, конвертация в рубли" },
+    { id: 10, q: "Какой срок действия установлен для карт NonPers (корти милли)?", answers: ["5 лет", "18 месяцев", "Без ограничений"], correct: "5 лет" },
+    { id: 11, q: "Какова стоимость карты Visa Gold USD с 12 мая при оформлении через офисы банка Эсхата?", answers: ["0 сомони", "20 сомони", "200 сомони"], correct: "20 сомони" },
+    { id: 12, q: "Сколько стоит оформление карты Visa Gold USD с 12 мая при заказе через мобильное приложение ЭО?", answers: ["0 сомони", "20 сомони", "200 сомони"], correct: "20 сомони" },
+    { id: 13, q: "Период проведения акции «Тилло бурд намоед»?", answers: ["15 мая – 14 августа 2026", "1 мая – 30 июля 2026", "15 июля – 14 августа", "15 июня – 14 июля 2026"], correct: "15 мая – 14 августа 2026" },
+    { id: 14, q: "Что можно выиграть в акции «Тилло бурд намоед»?", answers: ["Золотой слиток", "Путёвку в Дубай", "Денежный приз в сумме 5000 смн", "Смартфон"], correct: "Золотой слиток" },
+    { id: 15, q: "Условия для участия в акции «Тилло бурд намоед»?", answers: ["Получить перевод от 5 000 смн из РФ и совершать покупки от 100 сомони", "Получить перевод от 5 000 сомони из любой страны и совершать покупки от 100", "Получить перевод от 5 000 сомони из Европы и совершать покупки от 100 сомони"], correct: "Получить перевод от 5 000 смн из РФ и совершать покупки от 100 сомони" },
+    { id: 16, q: "Какое условие для переводов чтобы участвовать «Тилло бурд намоед»?", answers: ["По номеру телефона или Visa Direct из РФ", "По номеру карты", "Через систему денежных переводов (Астрасенд, Вестерн, Юнистрим)", "Любым способом без ограничений"], correct: "По номеру телефона или Visa Direct из РФ" },
+    { id: 17, q: "Сколько этапов в акции «Тилло бурд намоед»?", answers: ["3", "2", "4"], correct: "3" },
+    { id: 18, q: "Слиток какого веса разыгрывается во время 1-го этапа акции «Тилло бурд намоед» 15 мая – 14 июня?", answers: ["10 г", "20 г", "5 г"], correct: "5 г" },
+    { id: 19, q: "Слиток какого веса разыгрывается во время 2-го этапа акции «Тилло бурд намоед» 15 июня – 14 июля?", answers: ["10 г", "20г", "5 г"], correct: "10 г" },
+    { id: 20, q: "Слиток какого веса разыгрывается во время 3-го этапа акции «Тилло бурд намоед» 15 июля – 14 августа?", answers: ["20г", "5 г", "10 г"], correct: "20г" },
+    { id: 21, q: "Какие действия нужно выполнить после получения перевода из РФ или Visa Direct (от 5 000 сомони), чтобы участвовать в акции?", answers: ["Совершать безналичные покупки (POS, QR, онлайн, Эсхата Онлайн) от 100 сомони каждая.", "Открыть новую карту", "Совершать переводы в сумме 100 смн на карту других банков", "Снимать наличные с карты в банкоматах"], correct: "Совершать безналичные покупки (POS, QR, онлайн, Эсхата Онлайн) от 100 сомони каждая." },
+    { id: 22, q: "Какой лимит снятия наличных без комиссии через кассу банка для карт Корти милли, Gold TJS и Visa Platinum TJS в период акция по увеличению лимита снятия наличных?", answers: ["До 30 000 сомони", "До 20 000 сомони", "До 10 000 сомони", "До 50 000 сомони"], correct: "До 30 000 сомони" },
+    { id: 23, q: "Какая комиссия действует при снятии суммы свыше 30 000 сомони через кассу банка в период акция по увеличению лимита снятия наличных?", answers: ["0,5%", "0%", "0,3%", "1%"], correct: "0,5%" },
+    { id: 24, q: "В какой период действует акция по увеличению лимита снятия наличных денежных средств в сомони через кассу банка для карт К-милли, Gold TJS и Visa Platinum TJS?", answers: ["с 15.05.2026 по 15.08.2026", "с 01.06.2026 по 15.09.2026", "с 10.05.2026 по 30.07.2026", "с 01.05.2026 по 15.06.2026"], correct: "с 15.05.2026 по 15.08.2026" },
+    { id: 25, q: "Максимальная сумма кредита «Имконияти нав» составляет:", answers: ["150 000 сомони", "100 000 сомони", "50 000 сомони"], correct: "100 000 сомони" },
+    { id: 26, q: "Срок кредита «Имконияти нав»:", answers: ["до 36 месяцев", "до 60 месяцев", "до 12 месяцев"], correct: "до 12 месяцев" },
+    { id: 27, q: "Процентная ставка для новых клиентов по кредиту «Имконияти нав»:", answers: ["18%", "15%", "12%"], correct: "18%" },
+    { id: 28, q: "Процентная ставка для повторных клиентов по кредиту «Имконияти нав»:", answers: ["15%", "12%", "18%"], correct: "15%" },
+    { id: 29, q: "Сколько транзакций учитывается в одном POS-терминале (магазине) за один день в акции «Тилло бурд намоед»?", answers: ["Только 1 операция", "Неограниченно", "До 5 операций", "Только 3 операции в день (остальные не засчитываются)"], correct: "Только 3 операции в день (остальные не засчитываются)" },
+    { id: 30, q: "В какой валюте можно открыть карту Visa Classic Virtual?", answers: ["В TJS/USD", "В USD", "В TJS"], correct: "В TJS" },
+    { id: 31, q: "Каким способом можно открыть виртуальную карту Visa Classic Virtual?", answers: ["Только в мобильном приложении Эсхата Онлайн", "Обратившись с паспортом в любой филиал банка", "Через официальный сайт банка по онлайн-заявке", "Позвонив в контакт-центр банка"], correct: "Только в мобильном приложении Эсхата Онлайн" },
+    { id: 32, q: "Какой возраст ребенка на которого можно открыть кошелька Eskhata Junior?", answers: ["от 7 до 16", "от 5 до 15", "от 3 до 18"], correct: "от 7 до 16" },
+    { id: 33, q: "Чем депозит для легализации денежных средств отличается от обычного срочного депозита?", answers: ["Привязан к законодательству и имеет специальные условия", "Более высокой процентной ставкой", "Можно пополнять в любое время"], correct: "Привязан к законодательству и имеет специальные условия" },
+    { id: 34, q: "Какая стоимость сейфовых ячеек объемом 8х30х43 и 4х22х33 см для юридических лиц?", answers: ["250 сомони", "150 сомони", "100 сомони"], correct: "250 сомони" },
+    { id: 35, q: "Через какую платёжную систему стали доступны исходящие денежные переводы?", answers: ["Астрасенд", "Western Union", "Юнистрим"], correct: "Юнистрим" },
+    { id: 36, q: "В какие страны клиенты могут отправлять переводы через Юнистрим?", answers: ["Россия, Армения, Кыргызстан", "Россия, Беларусь, Армения, Молдова, Кыргызстан", "Россия, Беларусь, Армения, Молдова"], correct: "Россия, Армения, Кыргызстан" },
+    { id: 37, q: "Кто является владельцем средств в Eskhata Junior?", answers: ["Родитель", "Ребёнок", "Банк"], correct: "Родитель" },
+    { id: 38, q: "Сколько кошельков Eskhata Junior может открыть один родитель?", answers: ["Неограниченное количество", "До 3", "До 10"], correct: "До 10" },
+    { id: 39, q: "Что необходимо сделать для открытия кошелька Eskhata Junior после ввода номера телефона ребёнка?", answers: ["Подтвердить открытие через SMS", "Привязать банковскую карту", "Оплатить комиссию"], correct: "Подтвердить открытие через SMS" },
+    { id: 40, q: "Какую функцию выполняет специалист ККО в рамках системы контроля качества?", answers: ["Оценивает и контролирует качество обслуживания клиентов сотрудниками УКС", "Проводит только обучение новых сотрудников", "Контролирует финансовые операции"], correct: "Оценивает и контролирует качество обслуживания клиентов сотрудниками УКС" },
+    { id: 41, q: "Что обозначает термин IVR в контексте работы клиентского сервиса?", answers: ["Интерактивное голосовое меню с предварительно записанными сообщениями", "Система обработки заявок", "Система внутренней отчетности", "Система оценки сотрудников"], correct: "Интерактивное голосовое меню с предварительно записанными сообщениями" },
+    { id: 42, q: "К какому подразделению относится Управление клиентского сервиса?", answers: ["Департамент розничной сети", "Департамент корпоративного бизнеса", "Департамент информационных технологий", "Департамент marketingа"], correct: "Департамент розничной сети" },
+    { id: 43, q: "Какую роль играет контроль качества в системе клиентского сервиса банка?", answers: ["Обеспечение высокого уровня обслуживания клиентов и соблюдения стандартов сервиса", "Контроль соблюдения графика сотрудников", "Анализ финансовой эффективности сотрудников", "Контроль маркетинговых кампаний"], correct: "Обеспечение высокого уровня обслуживания клиентов и соблюдения стандартов сервиса" },
+    { id: 44, q: "Какая цель применения штрафных санкций в системе контроля качества?", answers: ["Обеспечение соблюдения стандартов обслуживания и повышение качества работы сотрудников", "Наказание сотрудников", "Снижение расходов компании", "Сокращение количества операторов"], correct: "Обеспечение соблюдения стандартов обслуживания и повышение качества работы сотрудников" },
+    { id: 45, q: "В каком случае штраф может быть признан обоснованным?", answers: ["Если нарушение подтверждено результатами проверки или оценки качества обслуживания", "Если сотрудник допустил ошибку в отчетности", "Если руководитель посчитал работу неудовлетворительной", "Если клиент пожаловался устно"], correct: "Если нарушение подтверждено результатами проверки или оценки качества обслуживания" },
+    { id: 46, q: "Какой размер эмитентской комиссии применяется за перевод денежных средств во внешних операциях (через мобильные приложения других банков) по картам ОАО «Банк Эсхата» с 01.06.2026?", answers: ["1% от суммы перевода", "1,5% от суммы перевода", "2% от суммы перевода", "Комиссия не взимается"], correct: "1,5% от суммы перевода" },
+    { id: 47, q: "Каков срок действия виртуальной карты UPI Virtual?", answers: ["3 года", "18 месяцев", "5 лет", "7 лет"], correct: "5 лет" },
+    { id: 48, q: "Сколько стоит выпуск и годовое обслуживание карты UPI Virtual?", answers: ["Бесплатно", "10 сомони", "20 сомони в год", "50 сомони единоразово"], correct: "Бесплатно" },
+    { id: 49, q: "Каким способом можно открыть виртуальную карту UPI Virtual?", answers: ["Только в мобильном приложении Эсхата Онлайн", "Обратившись с паспортом в любой филиал банка", "Через официальный сайт банка по онлайн-заявке", "Позвонив в контакт-центр банка"], correct: "Только в мобильном приложении Эсхата Онлайн" },
+    { id: 50, q: "Выпускается ли физический пластиковый носитель для карты UPI Virtual?", answers: ["Нет, карта выпускается только в цифровом формате без пластика", "Да, по желанию клиента в офисе банка", "Да, доставляется курьером"], correct: "Нет, карта выпускается только в цифровом формате без пластика" },
+    { id: 51, q: "В какой валюте можно открыть карту UPI Virtual?", answers: ["В TJS/USD", "В USD", "В TJS"], correct: "В TJS" },
+    { id: 52, q: "Начисляется ли процент на остаток денежных средств по карте UPI Virtual?", answers: ["0%", "3%", "5%", "Зависит от суммы остатка на карте"], correct: "0%" },
+    { id: 53, q: "Каков срок действия виртуальной карты Visa Classic Virtual?", answers: ["3 года", "18 месяцев", "5 лет", "7 лет"], correct: "5 лет" },
+    { id: 54, q: "Сколько стоит выпуск и годовое обслуживание карты Visa Classic Virtual?", answers: ["Бесплатно", "10 сомони", "20 сомони в год", "50 сомони единоразово"], correct: "Бесплатно" }
+];
+
+let selectedQuestions = [];
+let currentIndex = 0;
+let correctCount = 0;
+let isQuizRunning = false;
+let userName = "";
+
+// Хранилище текущего сделанного (но ещё не подтвержденного) выбора
+let currentChosenAnswer = "";
+let currentSelectedButton = null;
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+window.onbeforeunload = function() {
+    if (isQuizRunning) return "Внимание! Тестирование еще идет. Данные будут потеряны.";
+};
+
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+}
+
+function startQuiz() {
+    const nameInput = document.getElementById('username');
+    userName = nameInput.value.trim();
+    if (!userName) { alert("Пожалуйста, введите имя!"); return; }
+
+    selectedQuestions = shuffle([...allQuestions]).slice(0, 30);
+    currentIndex = 0; correctCount = 0; isQuizRunning = true;
+    showScreen('screen-quiz'); displayQuestion();
+}
+
+function displayQuestion() {
+    document.getElementById('btn-next').style.display = 'none';
+    document.getElementById('btn-confirm').style.display = 'none';
+    
+    currentChosenAnswer = "";
+    currentSelectedButton = null;
+
+    document.getElementById('progress-text').innerText = `Вопрос ${currentIndex + 1} из 30`;
+    document.getElementById('live-score').innerText = `Верно: ${correctCount}`;
+
+    const currentItem = selectedQuestions[currentIndex];
+    document.getElementById('q-text').innerText = currentItem.q;
+
+    const optionsContainer = document.getElementById('q-options');
+    optionsContainer.innerHTML = '';
+    let answers = shuffle([...currentItem.answers]);
+
+    answers.forEach(ans => {
+        const li = document.createElement('div'); li.className = 'option-item';
+        const btn = document.createElement('button'); btn.innerText = ans; btn.type = 'button';
+        
+        // По клику на вариант ответа — просто выделяем его внешне
+        btn.onclick = function() { selectOption(this, ans); };
+        
+        li.appendChild(btn); optionsContainer.appendChild(li);
+    });
+}
+
+// Функция выделения ответа (до подтверждения)
+function selectOption(buttonElement, chosenAnswer) {
+    // Сбрасываем выделение со всех кнопок текущего вопроса
+    const allButtons = document.querySelectorAll('#q-options button');
+    allButtons.forEach(btn => btn.classList.remove('selected'));
+
+    // Выделяем текущую
+    buttonElement.classList.add('selected');
+    
+    // Запоминаем выбор
+    currentChosenAnswer = chosenAnswer;
+    currentSelectedButton = buttonElement;
+
+    // Показываем кнопку "Подтвердить ответ"
+    document.getElementById('btn-confirm').style.display = 'block';
+}
+
+// Функция окончательной проверки при нажатии на "Подтвердить"
+function confirmAnswer() {
+    if (!currentSelectedButton || !currentChosenAnswer) return;
+
+    // Скрываем кнопку подтверждения
+    document.getElementById('btn-confirm').style.display = 'none';
+
+    const allButtons = document.querySelectorAll('#q-options button');
+    // Блокируем дальнейшие изменения вариантов ответов
+    allButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.classList.remove('selected'); // убираем синий цвет предвыбора
+    });
+
+    const correctAnswer = selectedQuestions[currentIndex].correct;
+
+    if (currentChosenAnswer === correctAnswer) { 
+        currentSelectedButton.classList.add('correct'); 
+        correctCount++; 
+    } else {
+        currentSelectedButton.classList.add('wrong');
+        // Подсвечиваем правильный вариант для обучения
+        allButtons.forEach(btn => { if (btn.innerText === correctAnswer) btn.classList.add('correct'); });
+    }
+
+    // Показываем кнопку перехода к следующему вопросу
+    document.getElementById('btn-next').style.display = 'block';
+    document.getElementById('live-score').innerText = `Верно: ${correctCount}`;
+}
+
+function nextQuestion() {
+    currentIndex++;
+    if (currentIndex < 30) displayQuestion(); else finishQuiz();
+}
+
+function finishQuiz() {
+    isQuizRunning = false;
+    showScreen('screen-result');
+
+    const wrongCount = 30 - correctCount;
+    const percent = Math.round((correctCount / 30) * 100);
+
+    document.getElementById('res-name').innerText = userName;
+    document.getElementById('res-correct').innerText = correctCount;
+    document.getElementById('res-wrong').innerText = wrongCount;
+    document.getElementById('res-percent').innerText = `${percent}%`;
+
+    sendDataToGoogleSheets(userName, correctCount, wrongCount, percent);
+}
+
+function sendDataToGoogleSheets(name, correct, wrong, percent) {
+    const statusText = document.getElementById('sending-status');
+    const payload = { name: name, correct: correct, wrong: wrong, percent: percent };
+
+    fetch(WEB_APP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    .then(() => {
+        statusText.innerHTML = "<span style='color: #2e7d32; font-weight: bold;'>Данные успешно сохранены в таблицу!</span>";
+        document.getElementById('btn-restart').style.display = 'block';
+    })
+    .catch(err => {
+        console.error(err);
+        statusText.innerHTML = "<span style='color: #c62828;'>Ошибка при отправке данных.</span>";
+        document.getElementById('btn-restart').style.display = 'block';
+    });
+}
+
+function restartQuiz() {
+    document.getElementById('username').value = "";
+    document.getElementById('btn-restart').style.display = 'none';
+    document.getElementById('sending-status').innerText = "Сохранение результатов в таблицу...";
+    showScreen('screen-auth');
+}
+</script>
+</body>
+</html>
